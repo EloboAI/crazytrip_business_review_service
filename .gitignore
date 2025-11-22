@@ -1,0 +1,98 @@
+# Rust
+target/
+Cargo.lock
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+
+# Build artifacts
+build/
+dist/
+
+# Test coverage
+coverage/
+*.profraw
+
+# Backup files
+*.bak
+*.backup
+
+# Flycheck (Emacs)
+flycheck0/
+
+# Rust documentation
+doc/
+
+# Cargo registry cache
+.cargo/registry/
+
+# Cargo git cache
+.cargo/git/
+
+# Rustup
+.rustup/
+
+# Clippy
+clippy.toml
+
+# Security
+secrets/
+*.key
+*.pem
+*.crt
+*.p12
+
+# Docker
+.dockerignore
+
+# CI/CD
+.github/workflows/cache/
+
+# Node.js (if any frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if any scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Temporary directories
+tmp/
+temp/
