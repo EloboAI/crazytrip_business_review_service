@@ -50,38 +50,41 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .service(
                 web::scope("/api/v1")
+                    // Health
                     .service(handlers::health_check)
+                    // Registrations (verification workflow)
                     .service(handlers::submit_registration)
                     .service(handlers::get_registration)
                     .service(handlers::get_latest_registration_for_user)
                     .service(handlers::list_registrations_for_user)
-                    .service(handlers::create_location_for_registration)
-                    .service(handlers::update_location_for_registration)
-                    .service(handlers::delete_location_for_registration)
-                    .service(handlers::list_promotions_for_registration)
-                    .service(handlers::get_promotion_for_registration)
-                    .service(handlers::create_promotion_for_registration)
-                    .service(handlers::update_promotion_for_registration)
-                    .service(handlers::delete_promotion_for_registration)
-                    // Company management
-                    .service(handlers::create_company)
-                    .service(handlers::get_company)
-                    .service(handlers::list_companies)
-                    .service(handlers::update_company)
-                    .service(handlers::delete_company)
-                    .service(handlers::get_company_with_units)
-                    // Business unit management
-                    .service(handlers::create_business_unit)
-                    .service(handlers::get_business_unit)
-                    .service(handlers::list_business_units)
-                    .service(handlers::update_business_unit)
-                    .service(handlers::set_primary_unit)
-                    .service(handlers::delete_business_unit)
                     // Review system
                     .service(handlers::list_pending_reviews)
                     .service(handlers::get_business_review)
                     .service(handlers::submit_review_action)
-                    .service(handlers::get_review_stats),
+                    .service(handlers::get_review_stats)
+                    // Businesses
+                    .service(handlers::create_business)
+                    .service(handlers::get_business)
+                    .service(handlers::list_businesses_for_user)
+                    .service(handlers::update_business)
+                    .service(handlers::delete_business)
+                    // Locations
+                    .service(handlers::create_location)
+                    .service(handlers::get_location)
+                    .service(handlers::list_locations_for_business)
+                    .service(handlers::update_location)
+                    .service(handlers::delete_location)
+                    // Promotions
+                    .service(handlers::create_promotion)
+                    .service(handlers::get_promotion)
+                    .service(handlers::list_promotions_for_location)
+                    .service(handlers::list_promotions_for_business)
+                    .service(handlers::update_promotion)
+                    .service(handlers::delete_promotion)
+                    // Location Admins
+                    .service(handlers::add_location_admin)
+                    .service(handlers::list_location_admins)
+                    .service(handlers::remove_location_admin),
             )
     })
     .bind(&bind_address)?

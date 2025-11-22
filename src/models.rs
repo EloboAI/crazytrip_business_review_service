@@ -4,7 +4,11 @@ use serde_json::Value;
 use uuid::Uuid;
 use validator::Validate;
 
-/// Business verification status stored in Postgres enum
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+/// Business verification status (this is also a Postgres enum)
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "business_verification_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
@@ -40,15 +44,6 @@ pub enum BusinessPromotionType {
     Challenge,
 }
 
-/// Scope selector for a promotion (business-wide vs specific location)
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
-#[sqlx(type_name = "business_promotion_scope", rename_all = "snake_case")]
-#[serde(rename_all = "snake_case")]
-pub enum BusinessPromotionScope {
-    Business,
-    Location,
-}
-
 /// Promotion lifecycle status
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "business_promotion_status", rename_all = "snake_case")]
@@ -60,6 +55,20 @@ pub enum BusinessPromotionStatus {
     Expired,
     Cancelled,
 }
+
+/// Location admin role
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[sqlx(type_name = "location_admin_role", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum LocationAdminRole {
+    Owner,
+    Manager,
+    Staff,
+}
+
+// ============================================================================
+// BUSINESS REGISTRATION (Verification Workflow)
+// ============================================================================
 
 /// Business registration request persisted in database
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -85,155 +94,6 @@ pub struct BusinessRegistration {
     pub reviewer_name: Option<String>,
     pub submitted_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-/// Business company (owner-level entity)
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct BusinessCompany {
-    pub id: Uuid,
-    pub owner_user_id: Uuid,
-    pub company_name: String,
-    pub tax_id: Option<String>,
-    pub legal_entity_type: Option<String>,
-    pub is_active: bool,
-    pub metadata: Value,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Business unit (individual business under a company)
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct BusinessUnit {
-    pub id: Uuid,
-    pub company_id: Uuid,
-    pub registration_id: Option<Uuid>,
-    pub business_id: Option<Uuid>,
-    pub unit_name: String,
-    pub category: String,
-    pub is_primary: bool,
-    pub is_active: bool,
-    pub metadata: Value,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Business location associated with a registration
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct BusinessLocation {
-    pub id: Uuid,
-    pub registration_id: Uuid,
-    pub business_id: Option<Uuid>,
-    pub label: String,
-    pub formatted_address: String,
-    pub street: Option<String>,
-    pub city: Option<String>,
-    pub state_region: Option<String>,
-    pub postal_code: Option<String>,
-    pub country: Option<String>,
-    pub latitude: Option<f64>,
-    pub longitude: Option<f64>,
-    pub google_place_id: Option<String>,
-    pub timezone: Option<String>,
-    pub phone: Option<String>,
-    pub is_primary: bool,
-    pub notes: Option<String>,
-    pub metadata: Value,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Promotion persisted in the database
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct BusinessPromotion {
-    pub id: Uuid,
-    pub registration_id: Uuid,
-    pub unit_id: Option<Uuid>,
-    pub title: String,
-    pub subtitle: Option<String>,
-    pub description: Option<String>,
-    pub promotion_type: BusinessPromotionType,
-    pub scope: BusinessPromotionScope,
-    pub status: BusinessPromotionStatus,
-    pub image_url: Option<String>,
-    pub prize: Option<String>,
-    pub reward_points: i32,
-    pub discount_percent: Option<i32>,
-    pub max_claims: Option<i32>,
-    pub per_user_limit: Option<i32>,
-    pub total_claims: i32,
-    pub requires_check_in: bool,
-    pub requires_purchase: bool,
-    pub terms: Option<String>,
-    pub metadata: Value,
-    pub starts_at: DateTime<Utc>,
-    pub ends_at: DateTime<Utc>,
-    pub published_at: Option<DateTime<Utc>>,
-    pub created_by: Option<Uuid>,
-    pub updated_by: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Helper struct returned in API responses
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BusinessPromotionWithLocations {
-    pub promotion: BusinessPromotion,
-    pub locations: Vec<BusinessLocation>,
-}
-
-/// Helper for inserting a new promotion transactionally
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NewBusinessPromotion {
-    pub id: Uuid,
-    pub registration_id: Uuid,
-    pub unit_id: Option<Uuid>,
-    pub title: String,
-    pub subtitle: Option<String>,
-    pub description: Option<String>,
-    pub promotion_type: BusinessPromotionType,
-    pub scope: BusinessPromotionScope,
-    pub status: BusinessPromotionStatus,
-    pub image_url: Option<String>,
-    pub prize: Option<String>,
-    pub reward_points: i32,
-    pub discount_percent: Option<i32>,
-    pub max_claims: Option<i32>,
-    pub per_user_limit: Option<i32>,
-    pub total_claims: i32,
-    pub requires_check_in: bool,
-    pub requires_purchase: bool,
-    pub terms: Option<String>,
-    pub metadata: Value,
-    pub starts_at: DateTime<Utc>,
-    pub ends_at: DateTime<Utc>,
-    pub published_at: Option<DateTime<Utc>>,
-    pub created_by: Option<Uuid>,
-    pub updated_by: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Helper struct used when inserting a new location
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NewBusinessLocation {
-    pub id: Uuid,
-    pub registration_id: Uuid,
-    pub business_id: Option<Uuid>,
-    pub label: String,
-    pub formatted_address: String,
-    pub street: Option<String>,
-    pub city: Option<String>,
-    pub state_region: Option<String>,
-    pub postal_code: Option<String>,
-    pub country: Option<String>,
-    pub latitude: Option<f64>,
-    pub longitude: Option<f64>,
-    pub google_place_id: Option<String>,
-    pub timezone: Option<String>,
-    pub phone: Option<String>,
-    pub is_primary: bool,
-    pub notes: Option<String>,
-    pub metadata: Value,
 }
 
 /// Helper struct used when inserting a new registration
@@ -298,79 +158,207 @@ pub struct ReviewStats {
     pub rejected_today: i64,
 }
 
-/// Payload sent by business owners to create a registration
-#[derive(Debug, Deserialize, Validate)]
-pub struct CreateBusinessRegistrationRequest {
-    pub user_id: Uuid,
-    #[validate(length(min = 3, max = 120))]
-    pub name: String,
-    #[validate(length(min = 3, max = 120))]
-    pub category: String,
-    #[validate(length(min = 5))]
-    pub address: String,
-    #[validate(length(min = 10, max = 2000))]
-    pub description: Option<String>,
-    pub phone: Option<String>,
-    pub website: Option<String>,
-    #[validate(length(min = 4, max = 64))]
-    pub tax_id: Option<String>,
-    #[validate(length(min = 1))]
-    pub document_urls: Vec<String>,
-    pub is_multi_user_team: bool,
-    #[validate(email)]
-    pub owner_email: String,
-    #[validate(length(min = 3, max = 60))]
-    pub owner_username: String,
-    #[validate(length(min = 1))]
-    #[validate(nested)]
-    pub locations: Vec<CreateBusinessLocationRequest>,
-}
+// ============================================================================
+// APPROVED BUSINESSES
+// ============================================================================
 
-/// Response wrapper that includes registration plus history
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BusinessRegistrationWithHistory {
-    pub registration: BusinessRegistration,
-    pub locations: Vec<BusinessLocation>,
-    pub promotions: Vec<BusinessPromotionWithLocations>,
-    pub history: Vec<BusinessReviewEvent>,
-}
-
-/// Company with nested units and their details
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CompanyWithUnits {
-    pub company: BusinessCompany,
-    pub units: Vec<BusinessUnitDetail>,
-}
-
-/// Business unit with related data
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BusinessUnitDetail {
-    pub unit: BusinessUnit,
-    pub registration: Option<BusinessRegistration>,
-    pub locations: Vec<BusinessLocation>,
-    pub promotions: Vec<BusinessPromotionWithLocations>,
-}
-
-/// Request to create a company
-#[derive(Debug, Deserialize, Validate)]
-pub struct CreateCompanyRequest {
+/// Approved business entity
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct Business {
+    pub id: Uuid,
+    pub registration_id: Option<Uuid>,
     pub owner_user_id: Uuid,
-    #[validate(length(min = 3, max = 120))]
-    pub company_name: String,
+    pub business_name: String,
+    pub category: String,
     pub tax_id: Option<String>,
-    pub legal_entity_type: Option<String>,
+    pub description: Option<String>,
+    pub website: Option<String>,
+    pub logo_url: Option<String>,
+    pub is_active: bool,
+    pub metadata: Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
-/// Request to create a business unit
-#[derive(Debug, Deserialize, Validate)]
-pub struct CreateBusinessUnitRequest {
-    pub company_id: Uuid,
-    #[validate(length(min = 3, max = 120))]
-    pub unit_name: String,
-    #[validate(length(min = 3, max = 120))]
+/// Helper for creating new business
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewBusiness {
+    pub id: Uuid,
+    pub registration_id: Option<Uuid>,
+    pub owner_user_id: Uuid,
+    pub business_name: String,
     pub category: String,
-    pub is_primary: bool,
+    pub tax_id: Option<String>,
+    pub description: Option<String>,
+    pub website: Option<String>,
+    pub logo_url: Option<String>,
+    pub is_active: bool,
+    pub metadata: Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
+
+// ============================================================================
+// BUSINESS LOCATIONS (Branches/Physical Locations)
+// ============================================================================
+
+/// Business location/branch
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct BusinessLocation {
+    pub id: Uuid,
+    pub business_id: Uuid,
+    pub location_name: String,
+    pub formatted_address: String,
+    pub street: Option<String>,
+    pub city: Option<String>,
+    pub state_region: Option<String>,
+    pub postal_code: Option<String>,
+    pub country: Option<String>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub google_place_id: Option<String>,
+    pub timezone: Option<String>,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub is_active: bool,
+    pub is_primary: bool,
+    pub operating_hours: Option<Value>,
+    pub notes: Option<String>,
+    pub metadata: Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Helper for creating new location
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewBusinessLocation {
+    pub id: Uuid,
+    pub business_id: Uuid,
+    pub location_name: String,
+    pub formatted_address: String,
+    pub street: Option<String>,
+    pub city: Option<String>,
+    pub state_region: Option<String>,
+    pub postal_code: Option<String>,
+    pub country: Option<String>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub google_place_id: Option<String>,
+    pub timezone: Option<String>,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub is_active: bool,
+    pub is_primary: bool,
+    pub operating_hours: Option<Value>,
+    pub notes: Option<String>,
+    pub metadata: Value,
+}
+
+// ============================================================================
+// BUSINESS PROMOTIONS (Per Location)
+// ============================================================================
+
+/// Promotion for a specific location
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct BusinessPromotion {
+    pub id: Uuid,
+    pub location_id: Uuid,
+    pub title: String,
+    pub subtitle: Option<String>,
+    pub description: Option<String>,
+    pub promotion_type: BusinessPromotionType,
+    pub status: BusinessPromotionStatus,
+    pub image_url: Option<String>,
+    pub prize: Option<String>,
+    pub reward_points: i32,
+    pub discount_percent: Option<i32>,
+    pub max_claims: Option<i32>,
+    pub per_user_limit: Option<i32>,
+    pub total_claims: i32,
+    pub requires_check_in: bool,
+    pub requires_purchase: bool,
+    pub terms: Option<String>,
+    pub metadata: Value,
+    pub starts_at: DateTime<Utc>,
+    pub ends_at: DateTime<Utc>,
+    pub published_at: Option<DateTime<Utc>>,
+    pub created_by: Option<Uuid>,
+    pub updated_by: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Helper for creating new promotion
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewBusinessPromotion {
+    pub id: Uuid,
+    pub location_id: Uuid,
+    pub title: String,
+    pub subtitle: Option<String>,
+    pub description: Option<String>,
+    pub promotion_type: BusinessPromotionType,
+    pub status: BusinessPromotionStatus,
+    pub image_url: Option<String>,
+    pub prize: Option<String>,
+    pub reward_points: i32,
+    pub discount_percent: Option<i32>,
+    pub max_claims: Option<i32>,
+    pub per_user_limit: Option<i32>,
+    pub total_claims: i32,
+    pub requires_check_in: bool,
+    pub requires_purchase: bool,
+    pub terms: Option<String>,
+    pub metadata: Value,
+    pub starts_at: DateTime<Utc>,
+    pub ends_at: DateTime<Utc>,
+    pub published_at: Option<DateTime<Utc>>,
+    pub created_by: Option<Uuid>,
+    pub updated_by: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+// ============================================================================
+// LOCATION ADMINISTRATORS
+// ============================================================================
+
+/// Administrator for a specific location
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct LocationAdmin {
+    pub id: Uuid,
+    pub location_id: Uuid,
+    pub user_id: Uuid,
+    pub user_email: String,
+    pub user_username: String,
+    pub role: LocationAdminRole,
+    pub granted_by: Option<Uuid>,
+    pub granted_by_username: Option<String>,
+    pub is_active: bool,
+    pub granted_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Helper for creating new admin
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewLocationAdmin {
+    pub id: Uuid,
+    pub location_id: Uuid,
+    pub user_id: Uuid,
+    pub user_email: String,
+    pub user_username: String,
+    pub role: LocationAdminRole,
+    pub granted_by: Option<Uuid>,
+    pub granted_by_username: Option<String>,
+    pub is_active: bool,
+    pub granted_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+// ============================================================================
+// REQUEST/RESPONSE DTOs
+// ============================================================================
 
 /// API response wrapper
 #[derive(Debug, Serialize)]
@@ -401,6 +389,60 @@ impl<T> ApiResponse<T> {
     }
 }
 
+/// Payload sent by business owners to create a registration
+#[derive(Debug, Deserialize, Validate)]
+pub struct CreateBusinessRegistrationRequest {
+    pub user_id: Uuid,
+    #[validate(length(min = 3, max = 120))]
+    pub name: String,
+    #[validate(length(min = 3, max = 120))]
+    pub category: String,
+    #[validate(length(min = 5))]
+    pub address: String,
+    #[validate(length(min = 10, max = 2000))]
+    pub description: Option<String>,
+    pub phone: Option<String>,
+    pub website: Option<String>,
+    #[validate(length(min = 4, max = 64))]
+    pub tax_id: Option<String>,
+    #[validate(length(min = 1))]
+    pub document_urls: Vec<String>,
+    pub is_multi_user_team: bool,
+    #[validate(email)]
+    pub owner_email: String,
+    #[validate(length(min = 3, max = 60))]
+    pub owner_username: String,
+}
+
+impl CreateBusinessRegistrationRequest {
+    pub fn into_new_registration(self) -> NewBusinessRegistration {
+        let now = Utc::now();
+        NewBusinessRegistration {
+            id: Uuid::new_v4(),
+            user_id: self.user_id,
+            business_id: None,
+            name: self.name,
+            category: self.category,
+            address: self.address,
+            description: self.description,
+            phone: self.phone,
+            website: self.website,
+            tax_id: self.tax_id,
+            document_urls: self.document_urls,
+            is_multi_user_team: self.is_multi_user_team,
+            status: BusinessVerificationStatus::Pending,
+            owner_email: self.owner_email,
+            owner_username: self.owner_username,
+            rejection_reason: None,
+            reviewer_notes: None,
+            reviewer_id: None,
+            reviewer_name: None,
+            submitted_at: now,
+            updated_at: now,
+        }
+    }
+}
+
 /// Review action request sent by reviewers
 #[derive(Debug, Deserialize)]
 pub struct ReviewActionRequest {
@@ -411,198 +453,71 @@ pub struct ReviewActionRequest {
     pub reviewer_name: Option<String>,
 }
 
-/// Request payload to create a new business location
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub struct CreateBusinessLocationRequest {
-    #[validate(length(min = 2, max = 120))]
-    pub label: String,
-    #[validate(length(min = 5))]
-    pub formatted_address: String,
-    pub street: Option<String>,
-    pub city: Option<String>,
-    pub state_region: Option<String>,
-    pub postal_code: Option<String>,
-    pub country: Option<String>,
-    pub latitude: Option<f64>,
-    pub longitude: Option<f64>,
-    pub google_place_id: Option<String>,
-    pub timezone: Option<String>,
-    pub phone: Option<String>,
-    pub is_primary: bool,
-    pub notes: Option<String>,
-    #[serde(default)]
-    pub metadata: Value,
-}
-
-/// Request payload to create a new promotion
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub struct CreateBusinessPromotionRequest {
+/// Request to create a business
+#[derive(Debug, Deserialize, Validate)]
+pub struct CreateBusinessRequest {
+    pub registration_id: Option<Uuid>,
+    pub owner_user_id: Uuid,
     #[validate(length(min = 3, max = 120))]
-    pub title: String,
-    #[validate(length(max = 160))]
-    pub subtitle: Option<String>,
-    #[validate(length(max = 4000))]
-    pub description: Option<String>,
-    pub promotion_type: BusinessPromotionType,
-    pub scope: BusinessPromotionScope,
-    #[validate(length(max = 1024))]
-    pub image_url: Option<String>,
-    #[validate(length(max = 1024))]
-    pub prize: Option<String>,
-    #[validate(range(min = 0, max = 10000))]
-    pub reward_points: i32,
-    #[validate(range(min = 0, max = 100))]
-    pub discount_percent: Option<i32>,
-    #[validate(range(min = 1, max = 1000000))]
-    pub max_claims: Option<i32>,
-    #[validate(range(min = 1, max = 10000))]
-    pub per_user_limit: Option<i32>,
-    pub requires_check_in: bool,
-    pub requires_purchase: bool,
-    #[validate(length(max = 4000))]
-    pub terms: Option<String>,
-    #[serde(default)]
-    pub metadata: Value,
-    pub starts_at: DateTime<Utc>,
-    pub ends_at: DateTime<Utc>,
-    #[serde(default)]
-    pub location_ids: Vec<Uuid>,
-}
-
-/// Request payload to update an existing promotion
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub struct UpdateBusinessPromotionRequest {
+    pub business_name: String,
     #[validate(length(min = 3, max = 120))]
-    pub title: String,
-    #[validate(length(max = 160))]
-    pub subtitle: Option<String>,
-    #[validate(length(max = 4000))]
+    pub category: String,
+    pub tax_id: Option<String>,
     pub description: Option<String>,
-    pub promotion_type: BusinessPromotionType,
-    pub scope: BusinessPromotionScope,
-    #[validate(length(max = 1024))]
-    pub image_url: Option<String>,
-    #[validate(length(max = 1024))]
-    pub prize: Option<String>,
-    #[validate(range(min = 0, max = 10000))]
-    pub reward_points: i32,
-    #[validate(range(min = 0, max = 100))]
-    pub discount_percent: Option<i32>,
-    #[validate(range(min = 1, max = 1000000))]
-    pub max_claims: Option<i32>,
-    #[validate(range(min = 1, max = 10000))]
-    pub per_user_limit: Option<i32>,
-    pub status: BusinessPromotionStatus,
-    pub requires_check_in: bool,
-    pub requires_purchase: bool,
-    #[validate(length(max = 4000))]
-    pub terms: Option<String>,
-    #[serde(default)]
-    pub metadata: Value,
-    pub starts_at: DateTime<Utc>,
-    pub ends_at: DateTime<Utc>,
-    #[serde(default)]
-    pub location_ids: Vec<Uuid>,
-    pub published_at: Option<DateTime<Utc>>,
+    pub website: Option<String>,
+    pub logo_url: Option<String>,
 }
 
-/// Request payload to update an existing business location
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub struct UpdateBusinessLocationRequest {
-    #[validate(length(min = 2, max = 120))]
-    pub label: String,
-    #[validate(length(min = 5))]
-    pub formatted_address: String,
-    pub street: Option<String>,
-    pub city: Option<String>,
-    pub state_region: Option<String>,
-    pub postal_code: Option<String>,
-    pub country: Option<String>,
-    pub latitude: Option<f64>,
-    pub longitude: Option<f64>,
-    pub google_place_id: Option<String>,
-    pub timezone: Option<String>,
-    pub phone: Option<String>,
-    pub is_primary: bool,
-    pub notes: Option<String>,
-    #[serde(default)]
-    pub metadata: Value,
-}
-
-/// Summary response for listings
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BusinessRegistrationSummary {
-    pub registration: BusinessRegistration,
-    pub locations: Vec<BusinessLocation>,
-}
-
-impl CreateBusinessRegistrationRequest {
-    pub fn into_new_registration(self) -> (NewBusinessRegistration, Vec<NewBusinessLocation>) {
+impl CreateBusinessRequest {
+    pub fn into_new_business(self) -> NewBusiness {
         let now = Utc::now();
-        let CreateBusinessRegistrationRequest {
-            user_id,
-            name,
-            category,
-            address,
-            description,
-            phone,
-            website,
-            tax_id,
-            document_urls,
-            is_multi_user_team,
-            owner_email,
-            owner_username,
-            locations,
-        } = self;
-
-        let registration = NewBusinessRegistration {
+        NewBusiness {
             id: Uuid::new_v4(),
-            user_id,
-            business_id: None,
-            name,
-            category,
-            address,
-            description,
-            phone,
-            website,
-            tax_id,
-            document_urls,
-            is_multi_user_team,
-            status: BusinessVerificationStatus::Pending,
-            owner_email,
-            owner_username,
-            rejection_reason: None,
-            reviewer_notes: None,
-            reviewer_id: None,
-            reviewer_name: None,
-            submitted_at: now,
+            registration_id: self.registration_id,
+            owner_user_id: self.owner_user_id,
+            business_name: self.business_name,
+            category: self.category,
+            tax_id: self.tax_id,
+            description: self.description,
+            website: self.website,
+            logo_url: self.logo_url,
+            is_active: true,
+            metadata: Value::Object(Default::default()),
+            created_at: now,
             updated_at: now,
-        };
-
-        let registration_id = registration.id;
-
-        let locations = locations
-            .into_iter()
-            .enumerate()
-            .map(|(idx, location)| location.into_new_location(registration_id, idx == 0))
-            .collect();
-
-        (registration, locations)
+        }
     }
 }
 
-impl CreateBusinessLocationRequest {
-    pub fn into_new_location(
-        self,
-        registration_id: Uuid,
-        is_primary_default: bool,
-    ) -> NewBusinessLocation {
-        let metadata = sanitize_metadata(self.metadata);
+/// Request to create a location
+#[derive(Debug, Deserialize, Validate)]
+pub struct CreateLocationRequest {
+    #[validate(length(min = 2, max = 120))]
+    pub location_name: String,
+    #[validate(length(min = 5))]
+    pub formatted_address: String,
+    pub street: Option<String>,
+    pub city: Option<String>,
+    pub state_region: Option<String>,
+    pub postal_code: Option<String>,
+    pub country: Option<String>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub google_place_id: Option<String>,
+    pub timezone: Option<String>,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub is_primary: bool,
+    pub operating_hours: Option<Value>,
+    pub notes: Option<String>,
+}
+
+impl CreateLocationRequest {
+    pub fn into_new_location(self, business_id: Uuid) -> NewBusinessLocation {
         NewBusinessLocation {
             id: Uuid::new_v4(),
-            registration_id,
-            business_id: None,
-            label: self.label,
+            business_id,
+            location_name: self.location_name,
             formatted_address: self.formatted_address,
             street: self.street,
             city: self.city,
@@ -614,23 +529,97 @@ impl CreateBusinessLocationRequest {
             google_place_id: self.google_place_id,
             timezone: self.timezone,
             phone: self.phone,
-            is_primary: self.is_primary || is_primary_default,
+            email: self.email,
+            is_active: true,
+            is_primary: self.is_primary,
+            operating_hours: self.operating_hours,
             notes: self.notes,
-            metadata,
+            metadata: Value::Object(Default::default()),
         }
     }
 }
 
-impl CreateBusinessPromotionRequest {
+/// Request to update a location
+#[derive(Debug, Deserialize, Validate)]
+pub struct UpdateLocationRequest {
+    #[validate(length(min = 2, max = 120))]
+    pub location_name: String,
+    #[validate(length(min = 5))]
+    pub formatted_address: String,
+    pub street: Option<String>,
+    pub city: Option<String>,
+    pub state_region: Option<String>,
+    pub postal_code: Option<String>,
+    pub country: Option<String>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub google_place_id: Option<String>,
+    pub timezone: Option<String>,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub is_primary: bool,
+    pub is_active: bool,
+    pub operating_hours: Option<Value>,
+    pub notes: Option<String>,
+}
+
+impl UpdateLocationRequest {
+    pub fn apply_to_existing(&self, existing: &mut BusinessLocation) {
+        existing.location_name = self.location_name.clone();
+        existing.formatted_address = self.formatted_address.clone();
+        existing.street = self.street.clone();
+        existing.city = self.city.clone();
+        existing.state_region = self.state_region.clone();
+        existing.postal_code = self.postal_code.clone();
+        existing.country = self.country.clone();
+        existing.latitude = self.latitude;
+        existing.longitude = self.longitude;
+        existing.google_place_id = self.google_place_id.clone();
+        existing.timezone = self.timezone.clone();
+        existing.phone = self.phone.clone();
+        existing.email = self.email.clone();
+        existing.is_primary = self.is_primary;
+        existing.is_active = self.is_active;
+        existing.operating_hours = self.operating_hours.clone();
+        existing.notes = self.notes.clone();
+        existing.updated_at = Utc::now();
+    }
+}
+
+/// Request to create a promotion
+#[derive(Debug, Deserialize, Validate)]
+pub struct CreatePromotionRequest {
+    #[validate(length(min = 3, max = 120))]
+    pub title: String,
+    #[validate(length(max = 160))]
+    pub subtitle: Option<String>,
+    #[validate(length(max = 4000))]
+    pub description: Option<String>,
+    pub promotion_type: BusinessPromotionType,
+    #[validate(length(max = 1024))]
+    pub image_url: Option<String>,
+    #[validate(length(max = 1024))]
+    pub prize: Option<String>,
+    #[validate(range(min = 0, max = 10000))]
+    pub reward_points: i32,
+    #[validate(range(min = 0, max = 100))]
+    pub discount_percent: Option<i32>,
+    #[validate(range(min = 1, max = 1000000))]
+    pub max_claims: Option<i32>,
+    #[validate(range(min = 1, max = 10000))]
+    pub per_user_limit: Option<i32>,
+    pub requires_check_in: bool,
+    pub requires_purchase: bool,
+    #[validate(length(max = 4000))]
+    pub terms: Option<String>,
+    pub starts_at: DateTime<Utc>,
+    pub ends_at: DateTime<Utc>,
+}
+
+impl CreatePromotionRequest {
     pub fn validate_business_rules(&self) -> Result<(), String> {
         if self.ends_at <= self.starts_at {
             return Err("La fecha de finalización debe ser posterior a la fecha de inicio".into());
-        }
-
-        if self.scope == BusinessPromotionScope::Location && self.location_ids.is_empty() {
-            return Err(
-                "Debes seleccionar al menos una ubicación para promociones por sucursal".into(),
-            );
         }
 
         if let Some(discount) = self.discount_percent {
@@ -654,82 +643,82 @@ impl CreateBusinessPromotionRequest {
 
     pub fn into_new_promotion(
         self,
-        registration_id: Uuid,
+        location_id: Uuid,
         actor_id: Option<Uuid>,
-    ) -> (NewBusinessPromotion, Vec<Uuid>) {
-        let CreateBusinessPromotionRequest {
-            title,
-            subtitle,
-            description,
-            promotion_type,
-            scope,
-            image_url,
-            prize,
-            reward_points,
-            discount_percent,
-            max_claims,
-            per_user_limit,
-            requires_check_in,
-            requires_purchase,
-            terms,
-            metadata,
-            starts_at,
-            ends_at,
-            location_ids,
-        } = self;
-
-        let sanitized_metadata = sanitize_metadata(metadata);
+    ) -> NewBusinessPromotion {
         let now = Utc::now();
-        let status = if starts_at > now {
+        let status = if self.starts_at > now {
             BusinessPromotionStatus::Scheduled
         } else {
             BusinessPromotionStatus::Active
         };
 
-        let promotion = NewBusinessPromotion {
+        NewBusinessPromotion {
             id: Uuid::new_v4(),
-            registration_id,
-            unit_id: None,
-            title,
-            subtitle,
-            description,
-            promotion_type,
-            scope,
+            location_id,
+            title: self.title,
+            subtitle: self.subtitle,
+            description: self.description,
+            promotion_type: self.promotion_type,
             status,
-            image_url,
-            prize,
-            reward_points,
-            discount_percent,
-            max_claims,
-            per_user_limit,
+            image_url: self.image_url,
+            prize: self.prize,
+            reward_points: self.reward_points,
+            discount_percent: self.discount_percent,
+            max_claims: self.max_claims,
+            per_user_limit: self.per_user_limit,
             total_claims: 0,
-            requires_check_in,
-            requires_purchase,
-            terms,
-            metadata: sanitized_metadata,
-            starts_at,
-            ends_at,
+            requires_check_in: self.requires_check_in,
+            requires_purchase: self.requires_purchase,
+            terms: self.terms,
+            metadata: Value::Object(Default::default()),
+            starts_at: self.starts_at,
+            ends_at: self.ends_at,
             published_at: None,
             created_by: actor_id,
             updated_by: actor_id,
             created_at: now,
             updated_at: now,
-        };
-
-        (promotion, location_ids)
+        }
     }
 }
 
-impl UpdateBusinessPromotionRequest {
+/// Request to update a promotion
+#[derive(Debug, Deserialize, Validate)]
+pub struct UpdatePromotionRequest {
+    #[validate(length(min = 3, max = 120))]
+    pub title: String,
+    #[validate(length(max = 160))]
+    pub subtitle: Option<String>,
+    #[validate(length(max = 4000))]
+    pub description: Option<String>,
+    pub promotion_type: BusinessPromotionType,
+    pub status: BusinessPromotionStatus,
+    #[validate(length(max = 1024))]
+    pub image_url: Option<String>,
+    #[validate(length(max = 1024))]
+    pub prize: Option<String>,
+    #[validate(range(min = 0, max = 10000))]
+    pub reward_points: i32,
+    #[validate(range(min = 0, max = 100))]
+    pub discount_percent: Option<i32>,
+    #[validate(range(min = 1, max = 1000000))]
+    pub max_claims: Option<i32>,
+    #[validate(range(min = 1, max = 10000))]
+    pub per_user_limit: Option<i32>,
+    pub requires_check_in: bool,
+    pub requires_purchase: bool,
+    #[validate(length(max = 4000))]
+    pub terms: Option<String>,
+    pub starts_at: DateTime<Utc>,
+    pub ends_at: DateTime<Utc>,
+    pub published_at: Option<DateTime<Utc>>,
+}
+
+impl UpdatePromotionRequest {
     pub fn validate_business_rules(&self) -> Result<(), String> {
         if self.ends_at <= self.starts_at {
             return Err("La fecha de finalización debe ser posterior a la fecha de inicio".into());
-        }
-
-        if self.scope == BusinessPromotionScope::Location && self.location_ids.is_empty() {
-            return Err(
-                "Debes seleccionar al menos una ubicación para promociones por sucursal".into(),
-            );
         }
 
         if let Some(discount) = self.discount_percent {
@@ -751,16 +740,11 @@ impl UpdateBusinessPromotionRequest {
         Ok(())
     }
 
-    pub fn apply_to_existing(
-        &self,
-        existing: &mut BusinessPromotion,
-        actor_id: Option<Uuid>,
-    ) -> Vec<Uuid> {
+    pub fn apply_to_existing(&self, existing: &mut BusinessPromotion, actor_id: Option<Uuid>) {
         existing.title = self.title.clone();
         existing.subtitle = self.subtitle.clone();
         existing.description = self.description.clone();
         existing.promotion_type = self.promotion_type;
-        existing.scope = self.scope;
         existing.status = self.status;
         existing.image_url = self.image_url.clone();
         existing.prize = self.prize.clone();
@@ -771,40 +755,86 @@ impl UpdateBusinessPromotionRequest {
         existing.requires_check_in = self.requires_check_in;
         existing.requires_purchase = self.requires_purchase;
         existing.terms = self.terms.clone();
-        existing.metadata = sanitize_metadata(self.metadata.clone());
         existing.starts_at = self.starts_at;
         existing.ends_at = self.ends_at;
         existing.published_at = self.published_at;
         existing.updated_by = actor_id;
         existing.updated_at = Utc::now();
-
-        self.location_ids.clone()
     }
 }
 
-impl UpdateBusinessLocationRequest {
-    pub fn apply_to_existing(&self, existing: &mut BusinessLocation) {
-        existing.label = self.label.clone();
-        existing.formatted_address = self.formatted_address.clone();
-        existing.street = self.street.clone();
-        existing.city = self.city.clone();
-        existing.state_region = self.state_region.clone();
-        existing.postal_code = self.postal_code.clone();
-        existing.country = self.country.clone();
-        existing.latitude = self.latitude;
-        existing.longitude = self.longitude;
-        existing.google_place_id = self.google_place_id.clone();
-        existing.timezone = self.timezone.clone();
-        existing.phone = self.phone.clone();
-        existing.is_primary = self.is_primary;
-        existing.notes = self.notes.clone();
-        existing.metadata = sanitize_metadata(self.metadata.clone());
+/// Request to add location admin
+#[derive(Debug, Deserialize, Validate)]
+pub struct AddLocationAdminRequest {
+    pub user_id: Uuid,
+    #[validate(email)]
+    pub user_email: String,
+    #[validate(length(min = 3, max = 60))]
+    pub user_username: String,
+    pub role: LocationAdminRole,
+}
+
+impl AddLocationAdminRequest {
+    pub fn into_new_admin(
+        self,
+        location_id: Uuid,
+        granted_by: Option<Uuid>,
+        granted_by_username: Option<String>,
+    ) -> NewLocationAdmin {
+        let now = Utc::now();
+        NewLocationAdmin {
+            id: Uuid::new_v4(),
+            location_id,
+            user_id: self.user_id,
+            user_email: self.user_email,
+            user_username: self.user_username,
+            role: self.role,
+            granted_by,
+            granted_by_username,
+            is_active: true,
+            granted_at: now,
+            created_at: now,
+            updated_at: now,
+        }
     }
 }
 
-fn sanitize_metadata(metadata: Value) -> Value {
-    match metadata {
-        Value::Null => Value::Object(Default::default()),
-        other => other,
-    }
+// ============================================================================
+// COMPOSITE RESPONSE TYPES
+// ============================================================================
+
+/// Business with its locations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BusinessWithLocations {
+    pub business: Business,
+    pub locations: Vec<BusinessLocation>,
+}
+
+/// Location with its promotions
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocationWithPromotions {
+    pub location: BusinessLocation,
+    pub promotions: Vec<BusinessPromotion>,
+}
+
+/// Business registration with review history
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegistrationWithHistory {
+    pub registration: BusinessRegistration,
+    pub history: Vec<BusinessReviewEvent>,
+}
+
+/// Business registration summary (for list views with locations but without full history)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegistrationSummary {
+    #[serde(flatten)]
+    pub registration: BusinessRegistration,
+    pub locations: Vec<BusinessLocation>,
+}
+
+/// Location with admins
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocationWithAdmins {
+    pub location: BusinessLocation,
+    pub admins: Vec<LocationAdmin>,
 }
