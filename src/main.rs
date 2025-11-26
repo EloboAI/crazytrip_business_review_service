@@ -1,3 +1,4 @@
+mod clients;
 mod database;
 mod handlers;
 mod models;
@@ -6,6 +7,7 @@ use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use std::env;
 
+use crate::clients::stories::StoriesClient;
 use crate::database::Database;
 
 #[actix_web::main]
@@ -17,6 +19,8 @@ async fn main() -> std::io::Result<()> {
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = env::var("PORT").unwrap_or_else(|_| "8082".to_string());
     let bind_address = format!("{}:{}", host, port);
+    let stories_service_url = env::var("STORIES_SERVICE_URL")
+        .unwrap_or_else(|_| "http://localhost:8083".to_string());
 
     let database_url = env::var("DATABASE_URL").map_err(|_| {
         std::io::Error::new(
@@ -31,6 +35,7 @@ async fn main() -> std::io::Result<()> {
     })?;
 
     let db_data = web::Data::new(db);
+    let stories_client = web::Data::new(StoriesClient::new(stories_service_url));
 
     log::info!(
         "🚀 Starting CrazyTrip Business Review Service on {}",
@@ -46,6 +51,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .app_data(db_data.clone())
+            .app_data(stories_client.clone())
             .wrap(cors)
             .wrap(Logger::default())
             .service(

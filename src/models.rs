@@ -612,6 +612,7 @@ pub struct CreatePromotionRequest {
     pub requires_purchase: bool,
     #[validate(length(max = 4000))]
     pub terms: Option<String>,
+    pub metadata: Option<Value>,
     pub starts_at: DateTime<Utc>,
     pub ends_at: DateTime<Utc>,
 }
@@ -671,7 +672,7 @@ impl CreatePromotionRequest {
             requires_check_in: self.requires_check_in,
             requires_purchase: self.requires_purchase,
             terms: self.terms,
-            metadata: Value::Object(Default::default()),
+            metadata: self.metadata.unwrap_or(Value::Object(Default::default())),
             starts_at: self.starts_at,
             ends_at: self.ends_at,
             published_at: None,
@@ -713,6 +714,7 @@ pub struct UpdatePromotionRequest {
     pub starts_at: DateTime<Utc>,
     pub ends_at: DateTime<Utc>,
     pub published_at: Option<DateTime<Utc>>,
+    pub metadata: Option<Value>,
 }
 
 impl UpdatePromotionRequest {
@@ -758,6 +760,9 @@ impl UpdatePromotionRequest {
         existing.starts_at = self.starts_at;
         existing.ends_at = self.ends_at;
         existing.published_at = self.published_at;
+        if let Some(metadata) = &self.metadata {
+            existing.metadata = metadata.clone();
+        }
         existing.updated_by = actor_id;
         existing.updated_at = Utc::now();
     }

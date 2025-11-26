@@ -3,12 +3,13 @@ use serde::Deserialize;
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::clients::stories::{SharePromotionRequest, StoriesClient};
 use crate::database::Database;
 use crate::models::{
     AddLocationAdminRequest, ApiResponse, BusinessRegistration, CreateBusinessRequest,
     CreateBusinessRegistrationRequest, CreateLocationRequest, CreatePromotionRequest,
     ReviewAction, ReviewActionRequest, UpdateLocationRequest,
-    UpdatePromotionRequest,
+    UpdatePromotionRequest, BusinessPromotionStatus,
 };
 
 fn extract_actor_headers(req: &HttpRequest) -> Result<(Uuid, String), String> {
@@ -560,10 +561,11 @@ pub async fn delete_location(
 pub async fn create_promotion(
     req: HttpRequest,
     db: web::Data<Database>,
+    stories_client: web::Data<StoriesClient>,
     location_id: web::Path<Uuid>,
     payload: web::Json<CreatePromotionRequest>,
 ) -> impl Responder {
-    let (actor_id, _actor_name) = match extract_actor_headers(&req) {
+    let (actor_id, actor_name) = match extract_actor_headers(&req) {
         Ok(headers) => headers,
         Err(err) => {
             return HttpResponse::BadRequest().json(ApiResponse::<()>::error(err));
@@ -584,7 +586,35 @@ pub async fn create_promotion(
 
     let new_promotion = body.into_new_promotion(location_id, Some(actor_id));
     match db.create_promotion(new_promotion).await {
-        Ok(promotion) => HttpResponse::Created().json(ApiResponse::success(promotion)),
+        Ok(promotion) => {
+            // If promotion is active, share to stories
+            if matches!(promotion.status, crate::models::BusinessPromotionStatus::Active) {
+                let share_req = SharePromotionRequest {
+                    author_id: actor_id,
+                    author_name: Some(actor_name),
+                    promotion_id: promotion.id,
+                    business_id: None,
+                    location_id: Some(location_id),
+                    title: promotion.title.clone(),
+                    description: promotion.description.clone(),
+                    cover_url: promotion.image_url.clone(),
+                    expires_at: Some(promotion.ends_at),
+                    media_urls: promotion.image_url.clone().map(|url| vec![url]).unwrap_or_default(),
+                    latitude: None,
+                    longitude: None,
+                    location_name: None,
+                    metadata: Some(promotion.metadata.clone()),
+                };
+
+                let client = stories_client.get_ref().clone();
+                actix_rt::spawn(async move {
+                    if let Err(e) = client.share_promotion(share_req).await {
+                        log::error!("Failed to share promotion to stories: {}", e);
+                    }
+                });
+            }
+            HttpResponse::Created().json(ApiResponse::success(promotion))
+        }
         Err(err) => {
             log::error!("Failed to create promotion: {err:?}");
             HttpResponse::InternalServerError()
@@ -648,10 +678,11 @@ pub async fn list_promotions_for_business(
 pub async fn update_promotion(
     req: HttpRequest,
     db: web::Data<Database>,
+    stories_client: web::Data<StoriesClient>,
     promotion_id: web::Path<Uuid>,
     payload: web::Json<UpdatePromotionRequest>,
 ) -> impl Responder {
-    let (actor_id, _actor_name) = match extract_actor_headers(&req) {
+    let (actor_id, actor_name) = match extract_actor_headers(&req) {
         Ok(headers) => headers,
         Err(err) => {
             return HttpResponse::BadRequest().json(ApiResponse::<()>::error(err));
@@ -686,7 +717,35 @@ pub async fn update_promotion(
     body.apply_to_existing(&mut existing_promotion, Some(actor_id));
 
     match db.update_promotion(existing_promotion).await {
-        Ok(updated) => HttpResponse::Ok().json(ApiResponse::success(updated)),
+        Ok(updated) => {
+            // If promotion is active, share to stories
+            if matches!(updated.status, crate::models::BusinessPromotionStatus::Active) {
+                let share_req = SharePromotionRequest {
+                    author_id: actor_id,
+                    author_name: Some(actor_name),
+                    promotion_id: updated.id,
+                    business_id: None,
+                    location_id: Some(updated.location_id),
+                    title: updated.title.clone(),
+                    description: updated.description.clone(),
+                    cover_url: updated.image_url.clone(),
+                    expires_at: Some(updated.ends_at),
+                    media_urls: updated.image_url.clone().map(|url| vec![url]).unwrap_or_default(),
+                    latitude: None,
+                    longitude: None,
+                    location_name: None,
+                    metadata: Some(updated.metadata.clone()),
+                };
+
+                let client = stories_client.get_ref().clone();
+                actix_rt::spawn(async move {
+                    if let Err(e) = client.share_promotion(share_req).await {
+                        log::error!("Failed to share promotion to stories: {}", e);
+                    }
+                });
+            }
+            HttpResponse::Ok().json(ApiResponse::success(updated))
+        },
         Err(err) => {
             log::error!("Failed to update promotion: {err:?}");
             HttpResponse::InternalServerError()
