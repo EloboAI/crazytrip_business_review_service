@@ -6,9 +6,10 @@ mod models;
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use std::env;
+use std::sync::Arc;
 
 use crate::clients::stories::StoriesClient;
-use crate::database::Database;
+use crate::database::DatabaseService;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -29,12 +30,19 @@ async fn main() -> std::io::Result<()> {
         )
     })?;
 
-    let db = Database::connect(&database_url).await.map_err(|err| {
+    let db = DatabaseService::new(&database_url).await.map_err(|err| {
         log::error!("Failed to initialize database: {err:?}");
         std::io::Error::new(std::io::ErrorKind::Other, err)
     })?;
 
-    let db_data = web::Data::new(db);
+    // Initialize schema (though we use migrations, this ensures connection)
+    if let Err(e) = db.init_schema().await {
+        log::error!("Failed to initialize DB schema: {:#?}", e);
+    } else {
+        log::info!("DB schema ensured");
+    }
+
+    let db_data = web::Data::new(Arc::new(db));
     let stories_client = web::Data::new(StoriesClient::new(stories_service_url));
 
     log::info!(

@@ -4,7 +4,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::clients::stories::{SharePromotionRequest, StoriesClient};
-use crate::database::Database;
+use crate::database::DatabaseService;
 use crate::models::{
     AddLocationAdminRequest, ApiResponse, BusinessRegistration, CreateBusinessRequest,
     CreateBusinessRegistrationRequest, CreateLocationRequest, CreatePromotionRequest,
@@ -49,7 +49,7 @@ pub async fn health_check() -> impl Responder {
 
 #[post("/registrations")]
 pub async fn submit_registration(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     payload: web::Json<CreateBusinessRegistrationRequest>,
 ) -> impl Responder {
     let body = payload.into_inner();
@@ -71,11 +71,11 @@ pub async fn submit_registration(
 
 #[get("/registrations/{registration_id}")]
 pub async fn get_registration(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     registration_id: web::Path<Uuid>,
 ) -> impl Responder {
     let registration_id = registration_id.into_inner();
-    match db.get_registration_with_history(registration_id).await {
+    match db.get_registration_by_id(registration_id).await {
         Ok(Some(details)) => HttpResponse::Ok().json(ApiResponse::success(details)),
         Ok(None) => {
             HttpResponse::NotFound().json(ApiResponse::<()>::error("Registration not found".into()))
@@ -90,7 +90,7 @@ pub async fn get_registration(
 
 #[get("/registrations/users/{user_id}/latest")]
 pub async fn get_latest_registration_for_user(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     user_id: web::Path<Uuid>,
 ) -> impl Responder {
     let user_id = user_id.into_inner();
@@ -108,7 +108,7 @@ pub async fn get_latest_registration_for_user(
 
 #[get("/registrations/users/{user_id}")]
 pub async fn list_registrations_for_user(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     user_id: web::Path<Uuid>,
 ) -> impl Responder {
     let user_id = user_id.into_inner();
@@ -135,7 +135,7 @@ pub struct PaginationQuery {
 
 #[get("/reviews/pending")]
 pub async fn list_pending_reviews(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     query: web::Query<PaginationQuery>,
 ) -> impl Responder {
     let limit = query.limit.unwrap_or(50).clamp(1, 100);
@@ -153,11 +153,11 @@ pub async fn list_pending_reviews(
 
 #[get("/reviews/{registration_id}")]
 pub async fn get_business_review(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     registration_id: web::Path<Uuid>,
 ) -> impl Responder {
     let registration_id = registration_id.into_inner();
-    match db.get_registration_with_history(registration_id).await {
+    match db.get_registration_by_id(registration_id).await {
         Ok(Some(details)) => HttpResponse::Ok().json(ApiResponse::success(details)),
         Ok(None) => {
             HttpResponse::NotFound().json(ApiResponse::<()>::error("Registration not found".into()))
@@ -172,7 +172,7 @@ pub async fn get_business_review(
 
 #[post("/reviews/{registration_id}/action")]
 pub async fn submit_review_action(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     registration_id: web::Path<Uuid>,
     payload: web::Json<ReviewActionRequest>,
 ) -> impl Responder {
@@ -233,7 +233,7 @@ pub async fn submit_review_action(
         .await
     {
         Ok(_updated_registration) => {
-            match db.get_registration_with_history(registration_id).await {
+            match db.get_registration_by_id(registration_id).await {
                 Ok(Some(details)) => HttpResponse::Ok().json(ApiResponse::success(details)),
                 Ok(None) => HttpResponse::NotFound()
                     .json(ApiResponse::<()>::error("Registration not found".into())),
@@ -254,7 +254,7 @@ pub async fn submit_review_action(
 }
 
 #[get("/reviews/stats")]
-pub async fn get_review_stats(db: web::Data<Database>) -> impl Responder {
+pub async fn get_review_stats(db: web::Data<DatabaseService>) -> impl Responder {
     match db.get_review_stats().await {
         Ok(stats) => HttpResponse::Ok().json(ApiResponse::success(stats)),
         Err(err) => {
@@ -272,7 +272,7 @@ pub async fn get_review_stats(db: web::Data<Database>) -> impl Responder {
 #[post("/businesses")]
 pub async fn create_business(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     payload: web::Json<CreateBusinessRequest>,
 ) -> impl Responder {
     let (_actor_id, _actor_name) = match extract_actor_headers(&req) {
@@ -300,7 +300,7 @@ pub async fn create_business(
 }
 
 #[get("/businesses/{business_id}")]
-pub async fn get_business(db: web::Data<Database>, business_id: web::Path<Uuid>) -> impl Responder {
+pub async fn get_business(db: web::Data<DatabaseService>, business_id: web::Path<Uuid>) -> impl Responder {
     let business_id = business_id.into_inner();
     match db.get_business(business_id).await {
         Ok(Some(business)) => HttpResponse::Ok().json(ApiResponse::success(business)),
@@ -317,7 +317,7 @@ pub async fn get_business(db: web::Data<Database>, business_id: web::Path<Uuid>)
 
 #[get("/businesses/users/{user_id}")]
 pub async fn list_businesses_for_user(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     user_id: web::Path<Uuid>,
 ) -> impl Responder {
     let user_id = user_id.into_inner();
@@ -334,7 +334,7 @@ pub async fn list_businesses_for_user(
 #[put("/businesses/{business_id}")]
 pub async fn update_business(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     business_id: web::Path<Uuid>,
     payload: web::Json<CreateBusinessRequest>,
 ) -> impl Responder {
@@ -386,7 +386,7 @@ pub async fn update_business(
 #[delete("/businesses/{business_id}")]
 pub async fn delete_business(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     business_id: web::Path<Uuid>,
 ) -> impl Responder {
     let (_actor_id, _actor_name) = match extract_actor_headers(&req) {
@@ -399,9 +399,6 @@ pub async fn delete_business(
     let business_id = business_id.into_inner();
     match db.delete_business(business_id).await {
         Ok(()) => HttpResponse::NoContent().finish(),
-        Err(sqlx::Error::RowNotFound) => {
-            HttpResponse::NotFound().json(ApiResponse::<()>::error("Business not found".into()))
-        }
         Err(err) => {
             log::error!("Failed to delete business: {err:?}");
             HttpResponse::InternalServerError()
@@ -417,7 +414,7 @@ pub async fn delete_business(
 #[post("/businesses/{business_id}/locations")]
 pub async fn create_location(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     business_id: web::Path<Uuid>,
     payload: web::Json<CreateLocationRequest>,
 ) -> impl Responder {
@@ -448,7 +445,7 @@ pub async fn create_location(
 }
 
 #[get("/locations/{location_id}")]
-pub async fn get_location(db: web::Data<Database>, location_id: web::Path<Uuid>) -> impl Responder {
+pub async fn get_location(db: web::Data<DatabaseService>, location_id: web::Path<Uuid>) -> impl Responder {
     let location_id = location_id.into_inner();
     match db.get_location(location_id).await {
         Ok(Some(location)) => HttpResponse::Ok().json(ApiResponse::success(location)),
@@ -465,7 +462,7 @@ pub async fn get_location(db: web::Data<Database>, location_id: web::Path<Uuid>)
 
 #[get("/businesses/{business_id}/locations")]
 pub async fn list_locations_for_business(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     business_id: web::Path<Uuid>,
 ) -> impl Responder {
     let business_id = business_id.into_inner();
@@ -482,7 +479,7 @@ pub async fn list_locations_for_business(
 #[put("/locations/{location_id}")]
 pub async fn update_location(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     location_id: web::Path<Uuid>,
     payload: web::Json<UpdateLocationRequest>,
 ) -> impl Responder {
@@ -529,7 +526,7 @@ pub async fn update_location(
 #[delete("/locations/{location_id}")]
 pub async fn delete_location(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     location_id: web::Path<Uuid>,
 ) -> impl Responder {
     let (_actor_id, _actor_name) = match extract_actor_headers(&req) {
@@ -542,9 +539,6 @@ pub async fn delete_location(
     let location_id = location_id.into_inner();
     match db.delete_location(location_id).await {
         Ok(()) => HttpResponse::NoContent().finish(),
-        Err(sqlx::Error::RowNotFound) => {
-            HttpResponse::NotFound().json(ApiResponse::<()>::error("Location not found".into()))
-        }
         Err(err) => {
             log::error!("Failed to delete location: {err:?}");
             HttpResponse::InternalServerError()
@@ -560,7 +554,7 @@ pub async fn delete_location(
 #[post("/locations/{location_id}/promotions")]
 pub async fn create_promotion(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     stories_client: web::Data<StoriesClient>,
     location_id: web::Path<Uuid>,
     payload: web::Json<CreatePromotionRequest>,
@@ -625,7 +619,7 @@ pub async fn create_promotion(
 
 #[get("/promotions/{promotion_id}")]
 pub async fn get_promotion(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     promotion_id: web::Path<Uuid>,
 ) -> impl Responder {
     let promotion_id = promotion_id.into_inner();
@@ -644,7 +638,7 @@ pub async fn get_promotion(
 
 #[get("/locations/{location_id}/promotions")]
 pub async fn list_promotions_for_location(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     location_id: web::Path<Uuid>,
 ) -> impl Responder {
     let location_id = location_id.into_inner();
@@ -660,7 +654,7 @@ pub async fn list_promotions_for_location(
 
 #[get("/businesses/{business_id}/promotions")]
 pub async fn list_promotions_for_business(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     business_id: web::Path<Uuid>,
 ) -> impl Responder {
     let business_id = business_id.into_inner();
@@ -677,7 +671,7 @@ pub async fn list_promotions_for_business(
 #[put("/promotions/{promotion_id}")]
 pub async fn update_promotion(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     stories_client: web::Data<StoriesClient>,
     promotion_id: web::Path<Uuid>,
     payload: web::Json<UpdatePromotionRequest>,
@@ -757,7 +751,7 @@ pub async fn update_promotion(
 #[delete("/promotions/{promotion_id}")]
 pub async fn delete_promotion(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     promotion_id: web::Path<Uuid>,
 ) -> impl Responder {
     let (_actor_id, _actor_name) = match extract_actor_headers(&req) {
@@ -770,9 +764,6 @@ pub async fn delete_promotion(
     let promotion_id = promotion_id.into_inner();
     match db.delete_promotion(promotion_id).await {
         Ok(()) => HttpResponse::NoContent().finish(),
-        Err(sqlx::Error::RowNotFound) => {
-            HttpResponse::NotFound().json(ApiResponse::<()>::error("Promotion not found".into()))
-        }
         Err(err) => {
             log::error!("Failed to delete promotion: {err:?}");
             HttpResponse::InternalServerError()
@@ -788,7 +779,7 @@ pub async fn delete_promotion(
 #[post("/locations/{location_id}/admins")]
 pub async fn add_location_admin(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     location_id: web::Path<Uuid>,
     payload: web::Json<AddLocationAdminRequest>,
 ) -> impl Responder {
@@ -820,7 +811,7 @@ pub async fn add_location_admin(
 
 #[get("/locations/{location_id}/admins")]
 pub async fn list_location_admins(
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     location_id: web::Path<Uuid>,
 ) -> impl Responder {
     let location_id = location_id.into_inner();
@@ -837,7 +828,7 @@ pub async fn list_location_admins(
 #[delete("/locations/{location_id}/admins/{user_id}")]
 pub async fn remove_location_admin(
     req: HttpRequest,
-    db: web::Data<Database>,
+    db: web::Data<DatabaseService>,
     path: web::Path<(Uuid, Uuid)>,
 ) -> impl Responder {
     let (_actor_id, _actor_name) = match extract_actor_headers(&req) {

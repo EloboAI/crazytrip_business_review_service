@@ -9,8 +9,9 @@ use validator::Validate;
 // ============================================================================
 
 /// Business verification status (this is also a Postgres enum)
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type, postgres_types::ToSql, postgres_types::FromSql)]
 #[sqlx(type_name = "business_verification_status", rename_all = "snake_case")]
+
 #[serde(rename_all = "snake_case")]
 pub enum BusinessVerificationStatus {
     Pending,
@@ -21,7 +22,7 @@ pub enum BusinessVerificationStatus {
 }
 
 /// Review actions applied by reviewers (also a Postgres enum)
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type, postgres_types::ToSql, postgres_types::FromSql)]
 #[sqlx(type_name = "business_review_action", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum ReviewAction {
@@ -34,7 +35,7 @@ pub enum ReviewAction {
 }
 
 /// Promotion category type
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type, postgres_types::ToSql, postgres_types::FromSql)]
 #[sqlx(type_name = "business_promotion_type", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum BusinessPromotionType {
@@ -45,7 +46,7 @@ pub enum BusinessPromotionType {
 }
 
 /// Promotion lifecycle status
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type, postgres_types::ToSql, postgres_types::FromSql)]
 #[sqlx(type_name = "business_promotion_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum BusinessPromotionStatus {
@@ -57,7 +58,7 @@ pub enum BusinessPromotionStatus {
 }
 
 /// Location admin role
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type, postgres_types::ToSql, postgres_types::FromSql)]
 #[sqlx(type_name = "location_admin_role", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum LocationAdminRole {
